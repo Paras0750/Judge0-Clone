@@ -10,10 +10,10 @@ const executionResultSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  error: {
-    type: String,
-    default: "",
-  },
+  // error: {
+  //   type: String,
+  //   default: "",
+  // },
   status: {
     type: String,
     enum: ["success", "failure"],

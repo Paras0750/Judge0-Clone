@@ -13,12 +13,7 @@ const submissionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true,
-  },
-  status: {
-    type: String,
-    enum: ["pending", "processing", "completed", "failed"],
-    default: "pending",
-  },
+  }
 });
 
 module.exports = mongoose.model("Submission", submissionSchema);

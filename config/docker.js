@@ -15,8 +15,8 @@ function getDockerImage(language) {
       image = "gcc";
       break;
     default:
-      image = "node";
-    // throw new Error(`unsupprted language: ${language}`);
+      // image = "node";
+    throw new Error(`unsupprted language: ${language}`);
   }
 
   return image;
@@ -24,6 +24,10 @@ function getDockerImage(language) {
 
 // Create container according to user selected language
 async function createDockerContainer(language, code) {
+
+  code = code.toString();
+  code = parseCode(code,language);
+
   const containerConfig = {
     Image: getDockerImage(language), //node
     Cmd: getExecutionCommand(language, code), // ["node", "-e", code]
@@ -36,6 +40,14 @@ async function createDockerContainer(language, code) {
   const container = await docker.createContainer(containerConfig);
 
   return container;
+}
+
+function parseCode(code,language){
+  if(language == "c" || language == "cpp"){
+      return code.replace(/"/g, '\\"');
+  }else{
+      return code;
+  }
 }
 
 function getExecutionCommand(language, code) {
@@ -61,7 +73,6 @@ function getExecutionCommand(language, code) {
       ];
       break;
     default:
-      // cmd = ["node", "-e", code];
     throw new Error(`unsupprted language: ${language}`);
   }
 

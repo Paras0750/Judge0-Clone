@@ -34,10 +34,33 @@ app.use("/auth", authRoutes);
 app.use("/code", verifyToken, codeRoutes);
 
 app.get("/", (req, res) => {
-  for (let index = 0; index < 5000000; index++) {
-
-  }
+  for (let index = 0; index < 5000000; index++) {}
   res.send("Hello World!");
+});
+app.get("/save", verifyToken, (req, res) => {
+  const { _id } = req.user;
+
+  User.findOne({ _id: _id }, (err, user) => {
+    if (err) {
+      return res.status(500).json({ message: "Internal Server Error" });
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update the user's document with the code
+    user.code = code;
+
+    // Save the updated user document
+    user.save((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Failed to save code" });
+      }
+
+      return res.status(200).json({ message: "Code saved successfully" });
+    });
+  });
 });
 
 // Start the server
@@ -54,13 +77,11 @@ if (cluster.isMaster) {
     cluster.fork();
   });
 } else {
-
-  startRcpServerAsWorker(); 
-  
+  startRcpServerAsWorker();
 
   const server = app.listen(PORT, () => {
     console.log(
-      `server ${process.pid} is listening on port ${PORT}, http://localhost:3000/`
+      `server ${process.pid} is listening on http://localhost:${PORT}/`
     );
   });
 

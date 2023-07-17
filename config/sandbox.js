@@ -1,6 +1,24 @@
 const { createDockerContainer } = require("./docker");
+const ExecutionResult = require("../models/ExecutionResult");
 
-const executeUserCodeInContainer = async (code, language) => {
+function parseLogs(logs, language) {
+  if (language == "js") {
+    return logs
+      .replace(/\r?\n/g, "")
+      .replace(/\[90m/g, "... ")
+      .replace(/\[39m/g, "")
+      .replace(/\[33m/g, "");
+  } else if (language == "c" || language == "cpp") {
+    return logs
+      .replace(/\x1B\[[0-9;]*[m]/g, "")
+      .replace(/\[K/g, "")
+      .replace(/\r?\n/g, "");
+  } else {
+    return logs;
+  }
+}
+
+const executeUserCodeInContainer = async (code, language, submissionId) => {
   return new Promise(async (resolve, reject) => {
     const container = await createDockerContainer(language, code);
     await container.start();
@@ -10,7 +28,7 @@ const executeUserCodeInContainer = async (code, language) => {
       console.log("sending a tle");
       resolve({
         result: "Time Limit Exceed!!",
-        sucess: false,
+        success: false,
       });
       await container.stop();
     }, 4000);
@@ -19,18 +37,31 @@ const executeUserCodeInContainer = async (code, language) => {
 
     // get logs
     const logs = await container.logs({ stdout: true, stderr: true });
-    const cleanResult = logs
-      .toString()
-      .replace(/\u001b\[\d+m/g, "") // Remove escape sequences for color formatting  
-      .trim(); // Remove leading and trailing whitespace
+
+    const cleanResult = parseLogs(logs.toString(), language);
+
+    let success = containerExitStatus.StatusCode === 0 ? true : false;
+
+    const executionResult = new ExecutionResult({
+      submissionId: submissionId,
+      output: cleanResult,
+      status: success ? "success" : "failure",
+    });
+
+    await executionResult
+      .save()
+      .then((result) => {
+        console.log("Execution result saved successfully");
+      })
+      .catch((err) => console.log("Execution result couldn't save", err));
 
     // return output/error
-    if (containerExitStatus.StatusCode === 0) {
-      resolve({ result: cleanResult, sucess: true });
+    if (success) {
+      resolve({ result: cleanResult, success: true });
       clearTimeout(tle);
       await container.remove();
     } else {
-      resolve({ error: cleanResult, sucess: false });
+      resolve({ error: cleanResult, success: false });
       clearTimeout(tle);
       await container.remove();
     }

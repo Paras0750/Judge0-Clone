@@ -19,11 +19,15 @@ async function startRcpServerAsWorker() {
 
   // consumer for rcpCodeExecutionQueue
   channel.consume(codeExecutionQueue, async (msg) => {
-    const { code, language } = JSON.parse(msg.content.toString());
+    const { code, submissionId, language  } = JSON.parse(msg.content.toString());
 
     try {
       // process the rcp request / execute code inside container
-      const executionResult = await executeUserCodeInContainer(code, language);
+      const executionResult = await executeUserCodeInContainer(
+        code,
+        submissionId,
+        language,
+      );
 
       // publish the result to the response queue
       channel.sendToQueue(
@@ -50,6 +54,7 @@ async function publishMessageToCodeExecutionQueue(
   connection,
   channel,
   code,
+  submissionId,
   language,
   res
 ) {
@@ -66,7 +71,6 @@ async function publishMessageToCodeExecutionQueue(
       if (msg.properties.correlationId == correlationId) {
         const result = JSON.parse(msg.content.toString());
         res.status(200).json(result);
-        console.log(result.result);
         channel.close();
         connection.close();
       }
@@ -77,7 +81,7 @@ async function publishMessageToCodeExecutionQueue(
   // publish msg(code) to rcpcodeExecutionQueue / send rcp request
   channel.sendToQueue(
     codeExecutionQueue,
-    Buffer.from(JSON.stringify({ code, language })),
+    Buffer.from(JSON.stringify({ code, language, submissionId })),
     {
       correlationId,
       replyTo: responseQueueName,
